@@ -88,12 +88,14 @@ class HTTPClient(object):
         #print(url)
         host, port, path = self.parse_url(url)
         port = self.get_port(port)
-        print(host, port)
+        #print host, port, path
+
         socket = self.connect(host, port)
 
         # send a request first, sendall??
         if path == "/":
             path = ''
+        print("GOT HERE")
         request = "GET %s HTTP/1.1\nHost: %s\nConnection: close\n\n" % (path, host)
         socket.sendall(request)
         #print("Request: " + request)
@@ -106,6 +108,7 @@ class HTTPClient(object):
         #body = self.get_body(response)
         #print(len(body))
         #code = 500
+        #body = ''
         body = response
         return HTTPRequest(code, body)
 
@@ -121,14 +124,29 @@ class HTTPClient(object):
             return self.GET( url, args )
 
     def parse_url(self, url):
-        exp = '(?:http.*://)?(?P<host>[^:/ ]+).?(?P<port>[0-9]*)/?(?P<path>[^:]+)'
-        match = re.search(exp, url)
-        host = match.group('host')
-        #print("HOST HYPE: " + host)
-        port = match.group('port') 
-        path = match.group('path')
-        if host == 'slashdot.or':
-            host += 'g'
+        split = url.split(':')
+        print(split)
+
+        if len(split) == 2:
+            print("GOT HERE")
+            host = split[1].strip('/')
+            if '/' in host:
+                lst = host.split('/')
+                host = lst[0]
+                path = ''
+                port = ''
+                for i in range(1, len(lst)):
+                    path += '/' + lst[i]
+                print host
+            else:
+                port = ''
+                path = '/'
+
+        elif len(split) == 3:
+            host = split[1].strip('/')
+            port = split[2].split('/')[0]
+            path = split[2].strip(port)
+
         if path[0] != '/':
             #print("Yup")
             path = '/' + path
