@@ -38,27 +38,22 @@ class HTTPRequest(object):
 class HTTPClient(object):
 
     def connect(self, host, port):
-        # use sockets!
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((host, port))
-        #print("Connected")
         return s
-        #return None
 
     def get_code(self, data):
         split = data.split()
         code = split[1]
-        #print(data)
-        print("CODE HYPE: " + code)
         return int(code)
 
     def get_headers(self,data):
         return None
 
-    def get_body(self, data):
-        new = data.split()
-        for i in new:
-            print i
+    def get_get_body(self, data):
+        # new = data.split()
+        # for i in new:
+        #     print i
         # start = data.find("<head>")
         # end = data.find("</body>")
         # i = start
@@ -68,53 +63,79 @@ class HTTPClient(object):
         #     i += 1
         # #print (start, end)
         # print body
-        return body
+        return None
+
+    def get_post_body(self, data, args):
+        #print "Args:", args
+        lst = data.split("\n")
+        for i in range(0, len(lst)):
+            #print i, lst[i], type(lst[i])
+            if '{' in lst[i ]and '}' in lst[i]:
+                return lst[i]
+
+    def get_port(self, port):
+        if (port == ''):
+            port = 80
+        else:
+            port = int(port)
+
+        return port
 
     # read everything from the socket
     def recvall(self, sock):
         buffer = bytearray()
         done = False
         while not done:
-            #print("Working")
             part = sock.recv(1024)
             if (part):
                 buffer.extend(part)
             else:
                 done = not part
-            #print(part)
         return str(buffer)
 
     def GET(self, url, args=None):
-        #print(url)
         host, port, path = self.parse_url(url)
-        port = self.get_port(port)
-        #print host, port, path
-
         socket = self.connect(host, port)
 
-        # send a request first, sendall??
-        if path == "/":
-            path = ''
-        print("GOT HERE")
-        request = "GET %s HTTP/1.1\nHost: %s\nConnection: close\n\n" % (path, host)
+        request =  "GET %s HTTP/1.1\n"  % path
+        request += "Host: %s\n"         % host
+        request += "Connection: close\n\n"
+
         socket.sendall(request)
-        #print("Request: " + request)
 
         response = self.recvall(socket)
-        print("Response: " + response)
         
         socket.close()
         code = self.get_code(response)
         #body = self.get_body(response)
-        #print(len(body))
-        #code = 500
-        #body = ''
         body = response
         return HTTPRequest(code, body)
 
     def POST(self, url, args=None):
-        code = 500
-        body = ""
+        host, port, path = self.parse_url(url)
+        port = self.get_port(port)
+        socket = self.connect(host, port)
+        #print host, port, path
+
+        if args == None:
+            arguments = ""
+        else:
+            arguments = urllib.urlencode(args)
+
+        request =  "POST %s HTTP/1.1\n" % path
+        request += "Host: %s\n"         % host
+        request += "Content-Type: application/x-www-form-urlencoded\n"
+        request += "Content-Length: %s\n" % len(arguments)
+        request += "Connection: close\n\n"
+        request += arguments + "\n\n"
+
+        socket.sendall(request)
+        response = self.recvall(socket)
+        socket.close()
+
+        code = self.get_code(response)
+        body = self.get_post_body(response, arguments)
+        
         return HTTPRequest(code, body)
 
     def command(self, url, command="GET", args=None):
@@ -125,19 +146,16 @@ class HTTPClient(object):
 
     def parse_url(self, url):
         split = url.split(':')
-        print(split)
 
         if len(split) == 2:
-            print("GOT HERE")
             host = split[1].strip('/')
             if '/' in host:
                 lst = host.split('/')
                 host = lst[0]
                 path = ''
-                port = ''
+                port = 80
                 for i in range(1, len(lst)):
                     path += '/' + lst[i]
-                print host
             else:
                 port = ''
                 path = '/'
@@ -147,20 +165,8 @@ class HTTPClient(object):
             port = split[2].split('/')[0]
             path = split[2].strip(port)
 
-        if path[0] != '/':
-            #print("Yup")
-            path = '/' + path
-        #print("PATH HYPE: " + path)
-        print(host, port, path)
+        port = self.get_port(port)
         return host, port, path
-
-    def get_port(self, port):
-        if (port == ''):
-            port = 80
-        else:
-            port = int(port)
-
-        return port
     
 if __name__ == "__main__":
     client = HTTPClient()
