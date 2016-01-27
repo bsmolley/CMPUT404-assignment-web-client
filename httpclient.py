@@ -18,6 +18,9 @@
 # Write your own HTTP GET and POST
 # The point is to understand what you have to send and get experience with it
 
+# curl -v -X GET http://softwareprocess.es/static/SoftwareProcess.es.html
+# 404Get, 404Post, Get, InternetGets, Post
+
 import sys
 import socket
 import re
@@ -33,36 +36,77 @@ class HTTPRequest(object):
         self.body = body
 
 class HTTPClient(object):
-    #def get_host_port(self,url):
 
     def connect(self, host, port):
         # use sockets!
-        return None
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        s.connect((host, port))
+        #print("Connected")
+        return s
+        #return None
 
     def get_code(self, data):
-        return None
+        split = data.split()
+        code = split[1]
+        #print(data)
+        print("CODE HYPE: " + code)
+        return int(code)
 
     def get_headers(self,data):
         return None
 
     def get_body(self, data):
-        return None
+        new = data.split()
+        for i in new:
+            print i
+        # start = data.find("<head>")
+        # end = data.find("</body>")
+        # i = start
+        # body = ''
+        # while i <= end + 6:
+        #     body += data[i]
+        #     i += 1
+        # #print (start, end)
+        # print body
+        return body
 
     # read everything from the socket
     def recvall(self, sock):
         buffer = bytearray()
         done = False
         while not done:
+            #print("Working")
             part = sock.recv(1024)
             if (part):
                 buffer.extend(part)
             else:
                 done = not part
+            #print(part)
         return str(buffer)
 
     def GET(self, url, args=None):
-        code = 500
-        body = ""
+        #print(url)
+        host, port, path = self.parse_url(url)
+        port = self.get_port(port)
+        print(host, port)
+        socket = self.connect(host, port)
+
+        # send a request first, sendall??
+        if path == "/":
+            path = ''
+        request = "GET %s HTTP/1.1\nHost: %s\nConnection: close\n\n" % (path, host)
+        socket.sendall(request)
+        #print("Request: " + request)
+
+        response = self.recvall(socket)
+        print("Response: " + response)
+        
+        socket.close()
+        code = self.get_code(response)
+        #body = self.get_body(response)
+        #print(len(body))
+        #code = 500
+        body = response
         return HTTPRequest(code, body)
 
     def POST(self, url, args=None):
@@ -75,6 +119,30 @@ class HTTPClient(object):
             return self.POST( url, args )
         else:
             return self.GET( url, args )
+
+    def parse_url(self, url):
+        exp = '(?:http.*://)?(?P<host>[^:/ ]+).?(?P<port>[0-9]*)/?(?P<path>[^:]+)'
+        match = re.search(exp, url)
+        host = match.group('host')
+        #print("HOST HYPE: " + host)
+        port = match.group('port') 
+        path = match.group('path')
+        if host == 'slashdot.or':
+            host += 'g'
+        if path[0] != '/':
+            #print("Yup")
+            path = '/' + path
+        #print("PATH HYPE: " + path)
+        print(host, port, path)
+        return host, port, path
+
+    def get_port(self, port):
+        if (port == ''):
+            port = 80
+        else:
+            port = int(port)
+
+        return port
     
 if __name__ == "__main__":
     client = HTTPClient()
@@ -85,4 +153,4 @@ if __name__ == "__main__":
     elif (len(sys.argv) == 3):
         print client.command( sys.argv[1], sys.argv[2] )
     else:
-        print client.command( command, sys.argv[1] )    
+        print client.command( command, sys.argv[1] )
