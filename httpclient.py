@@ -87,16 +87,20 @@ class HTTPClient(object):
         host, port, path = self.parse_url(url)
         socket = self.connect(host, port)
 
+        if args == None:
+            arguments = ""
+        else:
+            arguments = urllib.urlencode(args)
+
         request =  "GET %s HTTP/1.1\n"  % path
         request += "Host: %s\n"         % host
-        request += "Connection: close" 
-        request += self.TERMINATE
+        request += "Connection: close" + self.TERMINATE
+        request += arguments + self.TERMINATE
 
         socket.sendall(request)
-
         response = self.recvall(socket)
-
         socket.close()
+        
         code = self.get_code(response)
         body = self.get_get_body(response)
 
