@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # coding: utf-8
-# Copyright 2013 Abram Hindle
+# Copyright 2016 Abram Hindle, Brandon Smolley
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,6 +37,8 @@ class HTTPRequest(object):
 
 class HTTPClient(object):
 
+    TERMINATE = "\r\n\r\n"
+
     def connect(self, host, port):
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.connect((host, port))
@@ -47,39 +49,26 @@ class HTTPClient(object):
         code = split[1]
         return int(code)
 
-    def get_headers(self,data):
-        return None
+    def get_headers(self, data):
+        header = data.split(self.TERMINATE)[0]
+        return header
 
     def get_get_body(self, data):
-        # new = data.split()
-        # for i in new:
-        #     print i
-        # start = data.find("<head>")
-        # end = data.find("</body>")
-        # i = start
-        # body = ''
-        # while i <= end + 6:
-        #     body += data[i]
-        #     i += 1
-        # #print (start, end)
-        # print body
-        return None
+        # split o \r\n index 0 = header, 1 = body
+        body = data.split(self.TERMINATE)[1]
+        return body
 
     def get_post_body(self, data, args):
-        #print "Args:", args
+        broken = False
         lst = data.split("\n")
         for i in range(0, len(lst)):
-            #print i, lst[i], type(lst[i])
-            if '{' in lst[i ]and '}' in lst[i]:
-                return lst[i]
-
-    def get_port(self, port):
-        if (port == ''):
-            port = 80
-        else:
-            port = int(port)
-
-        return port
+            if '{' in lst[i] and '}' in lst[i]:
+                for arg in args:
+                    if str(arg) not in lst[i]:
+                        broken = True
+                        break
+                if not broken:
+                    return lst[i]
 
     # read everything from the socket
     def recvall(self, sock):
@@ -99,7 +88,8 @@ class HTTPClient(object):
 
         request =  "GET %s HTTP/1.1\n"  % path
         request += "Host: %s\n"         % host
-        request += "Connection: close\n\n"
+        request += "Connection: close" 
+        request += self.TERMINATE
 
         socket.sendall(request)
 
@@ -107,15 +97,13 @@ class HTTPClient(object):
         
         socket.close()
         code = self.get_code(response)
-        #body = self.get_body(response)
-        body = response
+        body = self.get_get_body(response)
+
         return HTTPRequest(code, body)
 
     def POST(self, url, args=None):
         host, port, path = self.parse_url(url)
-        port = self.get_port(port)
         socket = self.connect(host, port)
-        #print host, port, path
 
         if args == None:
             arguments = ""
@@ -126,15 +114,15 @@ class HTTPClient(object):
         request += "Host: %s\n"         % host
         request += "Content-Type: application/x-www-form-urlencoded\n"
         request += "Content-Length: %s\n" % len(arguments)
-        request += "Connection: close\n\n"
-        request += arguments + "\n\n"
+        request += "Connection: close" + self.TERMINATE
+        request += arguments + self.TERMINATE
 
         socket.sendall(request)
         response = self.recvall(socket)
         socket.close()
 
         code = self.get_code(response)
-        body = self.get_post_body(response, arguments)
+        body = self.get_post_body(response, args)
         
         return HTTPRequest(code, body)
 
@@ -147,7 +135,10 @@ class HTTPClient(object):
     def parse_url(self, url):
         split = url.split(':')
 
-        if len(split) == 2:
+        # add saftey for no http??
+        # i len(split) == 1, add http to the thing?
+
+        if len(split) == 2 and "http" in url:
             host = split[1].strip('/')
             if '/' in host:
                 lst = host.split('/')
@@ -157,15 +148,15 @@ class HTTPClient(object):
                 for i in range(1, len(lst)):
                     path += '/' + lst[i]
             else:
-                port = ''
+                port = 80
                 path = '/'
 
-        elif len(split) == 3:
+        elif len(split) == 3 and 'http' in url:
             host = split[1].strip('/')
             port = split[2].split('/')[0]
             path = split[2].strip(port)
+            port = int(port)
 
-        port = self.get_port(port)
         return host, port, path
     
 if __name__ == "__main__":
