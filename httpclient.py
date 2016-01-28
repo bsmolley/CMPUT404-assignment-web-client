@@ -69,6 +69,7 @@ class HTTPClient(object):
                         break
                 if not broken:
                     return lst[i]
+        return data
 
     # read everything from the socket
     def recvall(self, sock):
@@ -94,7 +95,7 @@ class HTTPClient(object):
         socket.sendall(request)
 
         response = self.recvall(socket)
-        
+
         socket.close()
         code = self.get_code(response)
         body = self.get_get_body(response)
@@ -134,24 +135,21 @@ class HTTPClient(object):
 
     def parse_url(self, url):
         split = url.split(':')
-
-        # add saftey for no http??
-        # i len(split) == 1, add http to the thing?
-
-        if len(split) == 2 and "http" in url:
+        host, port, path = '', '', ''
+        if len(split) == 2 and "http://" in url:
             host = split[1].strip('/')
             if '/' in host:
                 lst = host.split('/')
                 host = lst[0]
-                path = ''
                 port = 80
+                path = ''
                 for i in range(1, len(lst)):
                     path += '/' + lst[i]
             else:
                 port = 80
                 path = '/'
 
-        elif len(split) == 3 and 'http' in url:
+        elif len(split) == 3 and 'http://' in url:
             host = split[1].strip('/')
             port = split[2].split('/')[0]
             path = split[2].strip(port)
@@ -166,6 +164,6 @@ if __name__ == "__main__":
         help()
         sys.exit(1)
     elif (len(sys.argv) == 3):
-        print client.command( sys.argv[1], sys.argv[2] )
+        print client.command( sys.argv[2], sys.argv[1] )
     else:
         print client.command( command, sys.argv[1] )
