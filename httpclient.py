@@ -53,8 +53,7 @@ class HTTPClient(object):
         header = data.split(self.TERMINATE)[0]
         return header
 
-    def get_get_body(self, data):
-        # split o \r\n index 0 = header, 1 = body
+    def get_body(self, data):
         body = data.split(self.TERMINATE)[1]
         return body
 
@@ -102,7 +101,7 @@ class HTTPClient(object):
         socket.close()
         
         code = self.get_code(response)
-        body = self.get_get_body(response)
+        body = self.get_body(response)
 
         return HTTPRequest(code, body)
 
@@ -127,7 +126,8 @@ class HTTPClient(object):
         socket.close()
 
         code = self.get_code(response)
-        body = self.get_post_body(response, args)
+        #body = self.get_post_body(response, args)
+        body = self.get_body(response)
         
         return HTTPRequest(code, body)
 
