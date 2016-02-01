@@ -102,6 +102,7 @@ class HTTPClient(object):
         
         code = self.get_code(response)
         body = self.get_body(response)
+        #print response.split()
 
         return HTTPRequest(code, body)
 
@@ -128,6 +129,7 @@ class HTTPClient(object):
         code = self.get_code(response)
         #body = self.get_post_body(response, args)
         body = self.get_body(response)
+        #print response.split()
         
         return HTTPRequest(code, body)
 
